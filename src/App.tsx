@@ -1,5 +1,5 @@
-import  { useState } from 'react';
-import { RotateCw, Users, Table, ChevronRight, ChevronLeft, RefreshCw, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { RotateCw, Users, Table, ChevronRight, ChevronLeft, RefreshCw, ArrowRight, Save, CheckCircle, Loader2, HardDrive } from 'lucide-react';
 
 // ポジションの定義
 type Position = {
@@ -57,32 +57,66 @@ const INITIAL_PLAYERS: Player[] = [
   { id: 'p11', name: '選手K', number: '11', role: 'Any', startPosId: 11 }, // B5 (大きい数)
 ];
 
+const STORAGE_KEY = 'volleyball_rotation_data_v1';
 
 export default function VolleyballRotationPlanner() {
   const [players, setPlayers] = useState<Player[]>(INITIAL_PLAYERS);
   const [currentRotation, setCurrentRotation] = useState(1); // 1-11
   const [viewMode, setViewMode] = useState<'court' | 'table'>('court');
+  
+  // Local Storage State
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // 1. Load Data from LocalStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        if (Array.isArray(parsedData) && parsedData.length > 0) {
+          setPlayers(parsedData);
+        }
+      } catch (e) {
+        console.error("Failed to parse saved data", e);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // 2. Auto-save whenever players change
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+    }
+  }, [players, isLoaded]);
+
+  // Manual Save (UI Feedback only, since auto-save works)
+  const handleSave = () => {
+    setIsSaving(true);
+    // Explicitly save again
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+    
+    // Simulate delay for UI feedback
+    setTimeout(() => {
+      setIsSaving(false);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }, 400);
+  };
+
 
   // ローテーションの「席順」定義 (時計回りの逆＝選手が進む順序)
   // 変更: P2 -> ベンチ(11..7) -> P1 -> P6 -> P5 -> P4 -> P3 -> P2
-  // ベンチのID順: 11(B5) -> 10(B4) -> ... -> 7(B1)
-  // つまり、P2から来た人はB5に入り、B5の人はB4へ... B1の人はP1へ出る
   const ROTATION_SEQUENCE = [2, 11, 10, 9, 8, 7, 1, 6, 5, 4, 3];
 
   // 特定のローテーションにおける各ポジションの選手を取得する関数
   const getPlayerAtPosition = (rotation: number, posId: number) => {
-    // 1. 調べたいポジション(posId)が、シーケンスの何番目にあるか探す
     const seqIndex = ROTATION_SEQUENCE.indexOf(posId);
     if (seqIndex === -1) return undefined;
 
-    // 2. ローテーション数に応じて、「誰がここに来るか」を逆算する
-    // Rot1 (offset 0): そのまま
-    // Rot2 (offset 1): 前の席にいた人が来る
-    // 選手はシーケンス順に進むので、ある席(index)にいる選手は、
-    // 初期配置において (index - (rotation - 1)) の場所にいた選手。
     const offset = rotation - 1;
-    
-    // 負の数に対応するためのモジュロ演算
     const len = ROTATION_SEQUENCE.length;
     const targetSeqIndex = ((seqIndex - offset) % len + len) % len;
     
@@ -93,6 +127,7 @@ export default function VolleyballRotationPlanner() {
 
   const updatePlayer = (id: string, field: keyof Player, value: string) => {
     setPlayers(players.map(p => p.id === id ? { ...p, [field]: value } : p));
+    setSaveStatus('idle');
   };
 
   const handleNextRotation = () => {
@@ -242,12 +277,30 @@ export default function VolleyballRotationPlanner() {
             <RefreshCw className="w-8 h-8" />
             11人制ローテーション
           </h1>
-          <p className="text-sm text-gray-500">
-            全員で回るローテーション（P2→ベンチ→P1）
+          <p className="text-sm text-gray-500 flex items-center gap-1">
+            <HardDrive size={14} className="text-gray-400" />
+            ブラウザ自動保存対応 (Cookie/Storage)
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+           <button 
+             onClick={handleSave}
+             disabled={isSaving}
+             className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 border shadow-sm ${
+               saveStatus === 'saved' ? 'bg-green-100 text-green-700 border-green-300' :
+               'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+             }`}
+           >
+             {isSaving ? <Loader2 size={18} className="animate-spin" /> : 
+              saveStatus === 'saved' ? <CheckCircle size={18} /> : 
+              <Save size={18} />}
+             {isSaving ? '保存中...' : 
+              saveStatus === 'saved' ? '保存完了' : '保存'}
+           </button>
+
+           <div className="h-6 w-px bg-gray-300 mx-1 hidden sm:block"></div>
+
            <button 
             onClick={() => setViewMode('court')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${viewMode === 'court' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 border'}`}
