@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RotateCw, Users, Table, ChevronRight, ChevronLeft, RefreshCw, ArrowRight, Save, CheckCircle, Loader2, HardDrive } from 'lucide-react';
+import { RotateCw, Users, Table, ChevronRight, ChevronLeft, RefreshCw, ArrowRight, Save, CheckCircle, Loader2, HardDrive, Printer } from 'lucide-react';
 
 // ポジションの定義
 type Position = {
@@ -106,6 +106,15 @@ export default function VolleyballRotationPlanner() {
     }, 400);
   };
 
+  // 印刷（PDF出力）ハンドラ
+  const handlePrint = () => {
+    // 一覧表モードに切り替え
+    setViewMode('table');
+    // レンダリングを待ってから印刷ダイアログを開く
+    setTimeout(() => {
+      window.print();
+    }, 300);
+  };
 
   // ローテーションの「席順」定義 (時計回りの逆＝選手が進む順序)
   // 変更: P2 -> ベンチ(11..7) -> P1 -> P6 -> P5 -> P4 -> P3 -> P2
@@ -140,7 +149,7 @@ export default function VolleyballRotationPlanner() {
 
   // コート表示用コンポーネント
   const CourtView = () => (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto print:hidden">
       {/* コートエリア */}
       <div className="bg-orange-100 border-4 border-orange-300 p-2 sm:p-4 rounded-t-lg relative shadow-inner aspect-[9/9] sm:aspect-[9/6]">
         {/* ネット */}
@@ -223,40 +232,44 @@ export default function VolleyballRotationPlanner() {
 
   // 一覧表モード
   const SheetView = () => (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto print:overflow-visible">
+      <div className="hidden print:block mb-4">
+        <h1 className="text-xl font-bold border-b-2 border-black pb-2 mb-2">11人制バレーボール ローテーション表</h1>
+        <p className="text-sm">作成日: {new Date().toLocaleDateString()}</p>
+      </div>
       <table className="w-full border-collapse bg-white text-sm">
         <thead>
-          <tr className="bg-gray-800 text-white">
-            <th className="p-2 border text-left whitespace-nowrap sticky left-0 bg-gray-800 z-10">Rot</th>
+          <tr className="bg-gray-800 text-white print:bg-gray-200 print:text-black">
+            <th className="p-2 border border-gray-300 text-left whitespace-nowrap sticky left-0 bg-gray-800 z-10 print:bg-transparent print:static">Rot</th>
             {/* コート内 */}
-            <th className="p-2 border text-center w-12 bg-blue-900">P4</th>
-            <th className="p-2 border text-center w-12 bg-blue-900">P3</th>
-            <th className="p-2 border text-center w-12 bg-blue-900">P2</th>
-            <th className="p-2 border text-center w-12 bg-blue-800">P5</th>
-            <th className="p-2 border text-center w-12 bg-blue-800">P6</th>
-            <th className="p-2 border text-center w-12 bg-yellow-700">P1</th>
+            <th className="p-2 border border-gray-300 text-center w-12 bg-blue-900 print:bg-transparent">P4</th>
+            <th className="p-2 border border-gray-300 text-center w-12 bg-blue-900 print:bg-transparent">P3</th>
+            <th className="p-2 border border-gray-300 text-center w-12 bg-blue-900 print:bg-transparent">P2</th>
+            <th className="p-2 border border-gray-300 text-center w-12 bg-blue-800 print:bg-transparent">P5</th>
+            <th className="p-2 border border-gray-300 text-center w-12 bg-blue-800 print:bg-transparent">P6</th>
+            <th className="p-2 border border-gray-300 text-center w-12 bg-yellow-700 print:bg-transparent">P1</th>
             {/* ベンチ: B5 -> B1 */}
-            <th className="p-2 border text-center w-8 bg-gray-600 text-xs">B5</th>
-            <th className="p-2 border text-center w-8 bg-gray-600 text-xs">B4</th>
-            <th className="p-2 border text-center w-8 bg-gray-600 text-xs">B3</th>
-            <th className="p-2 border text-center w-8 bg-gray-600 text-xs">B2</th>
-            <th className="p-2 border text-center w-8 bg-gray-600 text-xs">B1</th>
+            <th className="p-2 border border-gray-300 text-center w-8 bg-gray-600 text-xs print:bg-transparent">B5</th>
+            <th className="p-2 border border-gray-300 text-center w-8 bg-gray-600 text-xs print:bg-transparent">B4</th>
+            <th className="p-2 border border-gray-300 text-center w-8 bg-gray-600 text-xs print:bg-transparent">B3</th>
+            <th className="p-2 border border-gray-300 text-center w-8 bg-gray-600 text-xs print:bg-transparent">B2</th>
+            <th className="p-2 border border-gray-300 text-center w-8 bg-gray-600 text-xs print:bg-transparent">B1</th>
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: 11 }, (_, i) => i + 1).map(rot => (
-            <tr key={rot} className={rot === currentRotation ? "bg-blue-50 border-2 border-blue-400" : "hover:bg-gray-50"}>
-              <td className="p-2 border font-bold text-center sticky left-0 bg-inherit">{rot}</td>
+            <tr key={rot} className={rot === currentRotation ? "bg-blue-50 border-2 border-blue-400 print:bg-transparent print:border-gray-300" : "hover:bg-gray-50 print:bg-transparent"}>
+              <td className="p-2 border border-gray-300 font-bold text-center sticky left-0 bg-inherit print:static">{rot}</td>
               {/* 表示順: P4, P3, P2, P5, P6, P1, B5...B1 */}
               {[4, 3, 2, 5, 6, 1, 11, 10, 9, 8, 7].map(posId => {
                 const p = getPlayerAtPosition(rot, posId);
                 const isBench = posId > 6;
                 return (
-                  <td key={posId} className={`p-1 border text-center ${isBench ? 'bg-gray-50 text-gray-500' : ''}`}>
+                  <td key={posId} className={`p-1 border border-gray-300 text-center ${isBench ? 'bg-gray-50 text-gray-500 print:bg-transparent' : ''}`}>
                     {p ? (
                       <div className="flex flex-col items-center">
                         <span className={`font-bold ${isBench ? 'text-xs' : 'text-sm'}`}>{p.number}</span>
-                        {!isBench && <span className="text-[10px] text-gray-500 truncate max-w-[40px]">{p.name}</span>}
+                        {!isBench && <span className="text-[10px] text-gray-500 truncate max-w-[40px] print:text-black">{p.name}</span>}
                       </div>
                     ) : '-'}
                   </td>
@@ -270,8 +283,17 @@ export default function VolleyballRotationPlanner() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-4 bg-gray-50 min-h-screen font-sans text-gray-800">
-      <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="max-w-4xl mx-auto p-4 bg-gray-50 min-h-screen font-sans text-gray-800 print:bg-white print:p-0">
+      {/* 印刷用スタイル */}
+      <style>{`
+        @media print {
+          @page { size: A4 landscape; margin: 10mm; }
+          .no-print { display: none !important; }
+          body { background: white; }
+        }
+      `}</style>
+
+      <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2">
             <RefreshCw className="w-8 h-8" />
@@ -284,6 +306,15 @@ export default function VolleyballRotationPlanner() {
         </div>
         
         <div className="flex flex-wrap gap-2 items-center">
+           <button 
+             onClick={handlePrint}
+             className="px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 border shadow-sm bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+             title="PDFとして保存/印刷"
+           >
+             <Printer size={18} />
+             PDF/印刷
+           </button>
+
            <button 
              onClick={handleSave}
              disabled={isSaving}
@@ -316,9 +347,9 @@ export default function VolleyballRotationPlanner() {
         </div>
       </header>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* 左カラム：メンバー編集 */}
-        <div className="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+      <div className="grid lg:grid-cols-3 gap-6 print:block">
+        {/* 左カラム：メンバー編集 (印刷時は隠す) */}
+        <div className="lg:col-span-1 bg-white p-4 rounded-xl shadow-sm border border-gray-200 print:hidden">
           <h2 className="text-md font-bold mb-4 flex items-center gap-2 border-b pb-2">
             <Users size={20} />
             メンバー設定 (Start)
@@ -361,9 +392,9 @@ export default function VolleyballRotationPlanner() {
         </div>
 
         {/* 右カラム：メインビュー */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 print:w-full">
           {viewMode === 'court' && (
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 h-full flex flex-col">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 h-full flex flex-col print:hidden">
               <div className="flex justify-between items-center mb-4">
                 <button 
                   onClick={handlePrevRotation}
@@ -397,9 +428,10 @@ export default function VolleyballRotationPlanner() {
             </div>
           )}
 
-          {viewMode === 'table' && (
-             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-               <h3 className="text-lg font-bold mb-4">全ローテーション一覧 (11回転)</h3>
+          {/* 一覧表モード (印刷時は強制表示) */}
+          {(viewMode === 'table' || typeof window !== 'undefined' /* 印刷ハック: ここは単純化 */) && (
+             <div className={`bg-white p-4 rounded-xl shadow-sm border border-gray-200 print:border-none print:p-0 ${viewMode === 'court' ? 'hidden print:block' : ''}`}>
+               <h3 className="text-lg font-bold mb-4 print:hidden">全ローテーション一覧 (11回転)</h3>
                <SheetView />
              </div>
           )}
